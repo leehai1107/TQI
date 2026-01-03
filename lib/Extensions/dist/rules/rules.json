@@ -1,0 +1,50 @@
+[
+    {
+      "id": 1,
+      "priority": 1,
+      "action": {
+        "type": "modifyHeaders",
+        "requestHeaders": [
+          {
+            "header": "Origin",
+            "operation": "set",
+            "value": "https://business.facebook.com"
+          },
+          {
+            "header": "Referer",
+            "operation": "set",
+            "value": "https://business.facebook.com"
+          }
+        ]
+      },
+      "condition": {
+        "urlFilter": "https://business.facebook.com/*",
+        "resourceTypes": ["xmlhttprequest", "main_frame", "sub_frame"]
+      }
+    },
+    {
+      "id": 2,
+      "priority": 1,
+      "action": {
+        "type": "modifyHeaders",
+        "requestHeaders": [
+          {
+            "header": "Origin",
+            "operation": "set",
+            "value": "https://www.facebook.com"
+          },
+          {
+            "header": "Referer",
+            "operation": "set",
+            "value": "https://www.facebook.com"
+          }
+        ]
+      },
+      "condition": {
+        "urlFilter": "*://*.facebook.com/*",
+        "excludedUrls": ["https://business.facebook.com/*"],
+        "resourceTypes": ["xmlhttprequest", "main_frame", "sub_frame"]
+      }
+    }
+  ]
+  
