@@ -14,6 +14,7 @@ using MimeKit;
 using Newtonsoft.Json;
 using TQI.NBTeam.Commons;
 using TQI.NBTeam.Models;
+using Azure.Core;
 
 namespace TQI.NBTeam.Helpers;
 

@@ -19,7 +19,7 @@ using TQI.NBTeam.Services;
 
 namespace TQI.NBTeam;
 
-public class Form1 : Form
+public class frmMain : Form
 {
 	private CancellationTokenSource _cts = new CancellationTokenSource();
 
@@ -581,7 +581,7 @@ public class Form1 : Form
 
 	private ToolStripMenuItem tạoQuyTắcToolStripMenuItem;
 
-	public Form1()
+	public frmMain()
 	{
 		InitializeComponent();
 	}
@@ -7172,7 +7172,7 @@ public class Form1 : Form
 	private void InitializeComponent()
 	{
 		this.components = new System.ComponentModel.Container();
-		System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(TQI.NBTeam.Form1));
+		System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(TQI.NBTeam.frmMain));
 		this.panel1 = new System.Windows.Forms.Panel();
 		this.tabControl1 = new System.Windows.Forms.TabControl();
 		this.tabPage1 = new System.Windows.Forms.TabPage();
