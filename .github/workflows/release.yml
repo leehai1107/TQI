@@ -3,7 +3,7 @@ name: release
 on:
   push:
     tags:
-      - 'v*'
+      - "v*"
 
 jobs:
   release:
@@ -17,7 +17,7 @@ jobs:
       - name: Setup .NET SDK
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '9.0.x'
+          dotnet-version: "9.0.x"
 
       - name: Restore
         run: dotnet restore
@@ -46,29 +46,29 @@ jobs:
         shell: pwsh
         run: |
           $appcast = @'
-<?xml version="1.0" encoding="utf-8"?>
-<rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">
-  <channel>
-    <title>TQI.NBTeam Updates</title>
-    <link>https://github.com/${{ github.repository }}</link>
-    <description>Auto-update feed for TQI.NBTeam application</description>
-    <language>vi-VN</language>
+          <?xml version="1.0" encoding="utf-8"?>
+          <rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">
+            <channel>
+              <title>TQI.NBTeam Updates</title>
+              <link>https://github.com/${{ github.repository }}</link>
+              <description>Auto-update feed for TQI.NBTeam application</description>
+              <language>vi-VN</language>
 
-    <item>
-      <title>Version ${{ steps.meta.outputs.version }}</title>
-      <sparkle:releaseNotesLink>https://github.com/${{ github.repository }}/releases/tag/${{ github.ref_name }}</sparkle:releaseNotesLink>
-      <pubDate>${{ steps.meta.outputs.pubDate }}</pubDate>
-      <enclosure
-        url="https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/TQI.NBTeam-${{ github.ref_name }}-win-x64.zip"
-        sparkle:version="${{ steps.meta.outputs.version }}"
-        sparkle:os="windows"
-        length="${{ steps.meta.outputs.length }}"
-        type="application/octet-stream" />
-    </item>
+              <item>
+                <title>Version ${{ steps.meta.outputs.version }}</title>
+                <sparkle:releaseNotesLink>https://github.com/${{ github.repository }}/releases/tag/${{ github.ref_name }}</sparkle:releaseNotesLink>
+                <pubDate>${{ steps.meta.outputs.pubDate }}</pubDate>
+                <enclosure
+                  url="https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/TQI.NBTeam-${{ github.ref_name }}-win-x64.zip"
+                  sparkle:version="${{ steps.meta.outputs.version }}"
+                  sparkle:os="windows"
+                  length="${{ steps.meta.outputs.length }}"
+                  type="application/octet-stream" />
+              </item>
 
-  </channel>
-</rss>
-'@
+            </channel>
+          </rss>
+          '@
           $appcast | Set-Content -Path out/appcast.xml -Encoding utf8
 
       - name: Create GitHub Release and upload assets
