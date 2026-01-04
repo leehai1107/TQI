@@ -597,7 +597,7 @@ public class frmMain : Form
         cbbTypeProxy.SelectedIndex = 0;
         cbbTypeLoadBM.SelectedIndex = 0;
         cbbTypeLoadTKQC.SelectedIndex = 0;
-        Text = "TQI.NBTeamAds";
+        Text = "TQI.NBTeamAds V1.0.1";
         dtgvVia.AutoSizeRowsMode = DataGridViewAutoSizeRowsMode.None;
         dtgvVia.RowTemplate.Height = 35;
         dtgvBM.AutoSizeRowsMode = DataGridViewAutoSizeRowsMode.None;
