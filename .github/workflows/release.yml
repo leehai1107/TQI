@@ -45,7 +45,7 @@ jobs:
       - name: Generate appcast.xml
         shell: pwsh
         run: |
-          $appcast = @"
+          $appcast = @'
 <?xml version="1.0" encoding="utf-8"?>
 <rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">
   <channel>
@@ -68,8 +68,8 @@ jobs:
 
   </channel>
 </rss>
-"@
-          $appcast | Out-File -FilePath out/appcast.xml -Encoding utf8
+'@
+          $appcast | Set-Content -Path out/appcast.xml -Encoding utf8
 
       - name: Create GitHub Release and upload assets
         uses: softprops/action-gh-release@v1
