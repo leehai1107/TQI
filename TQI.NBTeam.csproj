@@ -107,7 +107,9 @@
       <LibDllsToOverwrite Include="lib\System.Numerics.Vectors.dll" />
       <LibDllsToOverwrite Include="lib\System.Text.Json.dll" />
       <LibDllsToOverwrite Include="lib\System.Text.Encodings.Web.dll" />
+      <SeleniumManagerPublishFiles Include="lib\selenium-manager\**\*.*" />
     </ItemGroup>
     <Copy SourceFiles="@(LibDllsToOverwrite)" DestinationFolder="$(PublishDir)" SkipUnchangedFiles="false" OverwriteReadOnlyFiles="true" />
+    <Copy SourceFiles="@(SeleniumManagerPublishFiles)" DestinationFolder="$(PublishDir)selenium-manager\%(RecursiveDir)" SkipUnchangedFiles="false" />
   </Target>
 </Project>
