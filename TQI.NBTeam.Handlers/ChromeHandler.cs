@@ -28,6 +28,10 @@ public class ChromeHandler
 			{
 				return false;
 			}
+			if (_chromeService?.chromeDriver == null)
+			{
+				return false;
+			}
 			_chromeService.chromeDriver.Manage().Cookies.DeleteAllCookies();
 			string[] cookieJar = _accountDto.Cookie.Split(';');
 			string[] array = cookieJar;

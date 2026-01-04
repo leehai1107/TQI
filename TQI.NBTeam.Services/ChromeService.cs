@@ -108,7 +108,7 @@ public class ChromeService
 				}
 				chromeOptions.AddArgument("--user-data-dir=" + ProfilePath);
 			}
-			string extFolder = Path.Combine(Path.GetDirectoryName(Application.ExecutablePath), "Extensions");
+			string extFolder = Path.Combine(Path.GetDirectoryName(Application.ExecutablePath), "lib", "Extensions");
 			if (Directory.Exists(extFolder))
 			{
 				List<string> subDirs = (from d in Directory.GetDirectories(extFolder)
@@ -1246,6 +1246,10 @@ public class ChromeService
 		if (Process != null)
 		{
 			return Process.HasExited;
+		}
+		if (chromeDriver == null)
+		{
+			return true;
 		}
 		bool isClose = true;
 		try
