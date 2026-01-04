@@ -2,171 +2,82 @@
 
 ## Tổng quan
 
-Ứng dụng TQI.NBTeam hiện đã được tích hợp NetSparkle để tự động cập nhật từ GitHub.
+Ứng dụng TQI.NBTeam đã tích hợp NetSparkle và workflow GitHub Actions để tự động build & phát hành nhị phân.
 
 ## Cách hoạt động
 
 ### 1. Khi khởi động ứng dụng
 
-- Ứng dụng **TỰ ĐỘNG** kiểm tra update từ GitHub (file `appcast.xml`)
-- Nếu có phiên bản mới, **TỰ ĐỘNG DOWNLOAD** ngầm không cần hỏi user
-- Sau khi download xong, **TỰ ĐỘNG RESTART** với phiên bản mới
-- **User không cần làm gì cả** - mở app là có version mới nhất!
+- Ứng dụng **tự động** kiểm tra update qua `appcast.xml` tải từ GitHub Releases (asset mới nhất)
+- Nếu có phiên bản mới, **tự động download** và **tự động restart** với bản mới
+- User chỉ cần mở app, không phải làm gì thêm
 
-### 2. File appcast.xml
+### 2. File appcast.xml (được workflow sinh tự động)
 
-File này cần được đặt trong repository GitHub của bạn (nhánh `main`) và accessible qua URL:
-
-```
-https://raw.githubusercontent.com/leehai1107/TQI/main/appcast.xml
-```
+- URL: `https://github.com/leehai1107/TQI/releases/latest/download/appcast.xml`
+- Workflow tạo appcast và upload vào Release, luôn trỏ tới asset mới nhất
 
 ## Quy trình release version mới
 
-### Bước 1: Cập nhật version trong code
+### Quy trình release mới (tự động qua GitHub Actions)
 
-1. Mở file `Properties/AssemblyInfo.cs`
-2. Thay đổi version:
-
-```csharp
-[assembly: AssemblyFileVersion("1.0.1.0")]
-[assembly: AssemblyVersion("1.0.1.0")]
-```
-
-### Bước 2: Build ứng dụng
+1. **Bump version** trong `Properties/AssemblyInfo.cs` (ví dụ 1.0.2.0) cho đồng bộ `ProductVersion` hiển thị.
+2. **Tạo tag** theo chuẩn: `v1.0.2` (khớp số version ở trên).
 
 ```bash
-dotnet build -c Release
+git commit -am "Bump version 1.0.2"
+git tag v1.0.2
+git push origin main --tags
 ```
 
-### Bước 3: Tạo installer
+3. **Workflow chạy tự động** (file `.github/workflows/release.yml`):
 
-Bạn cần tạo file installer (Setup.exe) cho ứng dụng. Có thể dùng các công cụ:
+   - `dotnet publish` win-x64
+   - Đóng gói zip: `TQI.NBTeam-v1.0.2-win-x64.zip`
+   - Sinh `appcast.xml` với đúng version, pubDate, length
+   - Tạo GitHub Release từ tag và upload cả zip + appcast
 
-- **Inno Setup** (khuyên dùng - miễn phí)
-- **WiX Toolset**
-- **Advanced Installer**
-
-#### Ví dụ với Inno Setup:
-
-1. Download và cài Inno Setup: https://jrsoftware.org/isinfo.php
-2. Tạo file script `setup.iss`:
-
-```iss
-[Setup]
-AppName=TQI.NBTeam
-AppVersion=1.0.1
-DefaultDirName={pf}\TQI.NBTeam
-DefaultGroupName=TQI.NBTeam
-OutputDir=.
-OutputBaseFilename=TQI.NBTeam-1.0.1-Setup
-Compression=lzma2
-SolidCompression=yes
-
-[Files]
-Source: "bin\Release\net481\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs
-
-[Icons]
-Name: "{group}\TQI.NBTeam"; Filename: "{app}\TQI.NBTeam.exe"
-Name: "{commondesktop}\TQI.NBTeam"; Filename: "{app}\TQI.NBTeam.exe"
-
-[Run]
-Filename: "{app}\TQI.NBTeam.exe"; Description: "Launch TQI.NBTeam"; Flags: postinstall nowait skipifsilent
-```
-
-3. Build installer:
-
-```bash
-iscc setup.iss
-```
-
-### Bước 4: Tạo GitHub Release
-
-1. Vào repository GitHub: https://github.com/leehai1107/TQI
-2. Chọn "Releases" → "Create a new release"
-3. Điền thông tin:
-   - **Tag**: `v1.0.1` (phải khớp với version trong code)
-   - **Title**: `Version 1.0.1`
-   - **Description**: Liệt kê các tính năng mới và bug fixes
-4. Upload file installer: `TQI.NBTeam-1.0.1-Setup.exe`
-5. Click "Publish release"
-
-### Bước 5: Cập nhật appcast.xml
-
-1. Mở file `appcast.xml`
-2. Thêm entry mới cho version 1.0.1 (ở đầu file, trước version cũ):
-
-```xml
-<item>
-  <title>Version 1.0.1</title>
-  <sparkle:releaseNotesLink>
-    https://github.com/leehai1107/TQI/releases/tag/v1.0.1
-  </sparkle:releaseNotesLink>
-  <pubDate>Sat, 04 Jan 2026 00:00:00 +0700</pubDate>
-  <enclosure
-    url="https://github.com/leehai1107/TQI/releases/download/v1.0.1/TQI.NBTeam-1.0.1-Setup.exe"
-    sparkle:version="1.0.1"
-    sparkle:os="windows"
-    length="12345678"
-    type="application/octet-stream" />
-</item>
-```
-
-**Chú ý quan trọng:**
-
-- `url`: Phải là đường dẫn download chính xác của file installer trên GitHub Release
-- `sparkle:version`: Version mới (ví dụ: `1.0.1`)
-- `length`: Kích thước file installer tính bằng bytes (xem trong Properties của file)
-- `pubDate`: Ngày phát hành theo format RFC 822
-
-3. Commit và push file `appcast.xml` lên nhánh `main`:
-
-```bash
-git add appcast.xml
-git commit -m "Update appcast.xml for version 1.0.1"
-git push origin main
-```
-
-### Bước 6: Kiểm tra
-
-1. Chạy ứng dụng version cũ (1.0.0)
-2. Ứng dụng sẽ tự động phát hiện version mới (1.0.1)
-3. Dialog update sẽ xuất hiện
-4. Click "Update" để test quá trình cập nhật
+4. **Client cũ** khi mở app sẽ lấy `appcast.xml` ở release mới nhất và tự động update.
 
 ## Cấu trúc URL quan trọng
 
 ### URL appcast.xml
 
 ```
-https://raw.githubusercontent.com/leehai1107/TQI/main/appcast.xml
+https://github.com/leehai1107/TQI/releases/latest/download/appcast.xml
 ```
 
-- URL này được cấu hình trong `UpdateManager.cs`
-- GitHub sẽ serve file XML trực tiếp
+- URL này đã được cấu hình trong `UpdateManager.cs`
+- App luôn lấy appcast từ release mới nhất
 
 ### URL download installer
 
 ```
-https://github.com/leehai1107/TQI/releases/download/v1.0.1/TQI.NBTeam-1.0.1-Setup.exe
+https://github.com/leehai1107/TQI/releases/download/v1.0.2/TQI.NBTeam-v1.0.2-win-x64.zip
 ```
 
-Format: `https://github.com/{owner}/{repo}/releases/download/{tag}/{filename}`
+Format: `https://github.com/{owner}/{repo}/releases/download/{tag}/{filename}` (workflow đã chuẩn hoá tên file)
 
 ## Troubleshooting
 
+## Cách test nhanh sau khi tạo tag
+
+1. Tạo tag mới (ví dụ `v1.0.2`) và push: `git push origin v1.0.2`
+2. Chờ GitHub Actions hoàn tất (check tab Actions và Release đã có asset zip + appcast.xml)
+3. Chạy app phiên bản cũ (ví dụ v1.0.1) trên máy người dùng
+4. Quan sát: app tự tải bản mới, cài đặt và tự restart; tiêu đề sẽ hiển thị version mới
+
 ### Ứng dụng không phát hiện update
 
-- Kiểm tra xem `appcast.xml` có accessible từ URL trên không
-- Mở trình duyệt và test URL: https://raw.githubusercontent.com/leehai1107/TQI/main/appcast.xml
-- Kiểm tra version trong `appcast.xml` có lớn hơn version hiện tại không
-- Xem Debug output trong Visual Studio (có log từ UpdateManager)
+- Kiểm tra `appcast.xml` tại: https://github.com/leehai1107/TQI/releases/latest/download/appcast.xml
+- Kiểm tra version trong appcast có lớn hơn version hiện tại không
+- Xem Debug output trong Visual Studio (log `[UpdateManager]`)
 
 ### Download failed
 
-- Kiểm tra URL download trong `appcast.xml` có đúng không
-- Kiểm tra file installer có tồn tại trong GitHub Release không
-- Kiểm tra kích thước file (`length` attribute) có đúng không
+- Kiểm tra URL download trong `appcast.xml`
+- Kiểm tra asset zip có tồn tại trong Release đúng tag không
+- Kiểm tra `length` có khớp kích thước file zip không
 
 ### Update không tự động restart
 

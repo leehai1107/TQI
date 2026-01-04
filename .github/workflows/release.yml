@@ -1,0 +1,81 @@
+name: release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  release:
+    runs-on: windows-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+
+      - name: Restore
+        run: dotnet restore
+
+      - name: Publish (win-x64, framework-dependent)
+        run: dotnet publish TQI.NBTeam.csproj -c Release -r win-x64 --self-contained false -p:PublishSingleFile=false -p:IncludeNativeLibrariesForSelfExtract=false -o out/publish
+
+      - name: Zip payload
+        run: |
+          $zipName = "TQI.NBTeam-${{ github.ref_name }}-win-x64.zip"
+          Compress-Archive -Path out/publish/* -DestinationPath "out/$zipName"
+
+      - name: Compute metadata
+        id: meta
+        shell: pwsh
+        run: |
+          $zip = Get-Item "out/TQI.NBTeam-${{ github.ref_name }}-win-x64.zip"
+          $len = $zip.Length
+          $ver = "${{ github.ref_name }}".TrimStart('v')
+          $pubDate = (Get-Date).ToString("ddd, dd MMM yyyy HH:mm:ss zzz")
+          "length=$len" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          "version=$ver" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          "pubDate=$pubDate" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+
+      - name: Generate appcast.xml
+        shell: pwsh
+        run: |
+          $appcast = @"
+<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">
+  <channel>
+    <title>TQI.NBTeam Updates</title>
+    <link>https://github.com/${{ github.repository }}</link>
+    <description>Auto-update feed for TQI.NBTeam application</description>
+    <language>vi-VN</language>
+
+    <item>
+      <title>Version ${{ steps.meta.outputs.version }}</title>
+      <sparkle:releaseNotesLink>https://github.com/${{ github.repository }}/releases/tag/${{ github.ref_name }}</sparkle:releaseNotesLink>
+      <pubDate>${{ steps.meta.outputs.pubDate }}</pubDate>
+      <enclosure
+        url="https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/TQI.NBTeam-${{ github.ref_name }}-win-x64.zip"
+        sparkle:version="${{ steps.meta.outputs.version }}"
+        sparkle:os="windows"
+        length="${{ steps.meta.outputs.length }}"
+        type="application/octet-stream" />
+    </item>
+
+  </channel>
+</rss>
+"@
+          $appcast | Out-File -FilePath out/appcast.xml -Encoding utf8
+
+      - name: Create GitHub Release and upload assets
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            out/TQI.NBTeam-${{ github.ref_name }}-win-x64.zip
+            out/appcast.xml
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

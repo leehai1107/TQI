@@ -19,10 +19,10 @@ public class UpdateManager : IDisposable
 	private bool _disposed;
 
 	/// <summary>
-	/// URL của appcast.xml trên GitHub
-	/// Format: https://raw.githubusercontent.com/{owner}/{repo}/{branch}/appcast.xml
+	/// URL appcast trỏ tới asset mới nhất trên GitHub Releases
+	/// Workflow sẽ upload appcast.xml vào release asset với tên appcast.xml
 	/// </summary>
-	private const string AppCastUrl = "https://raw.githubusercontent.com/leehai1107/TQI/main/appcast.xml";
+	private const string AppCastUrl = "https://github.com/leehai1107/TQI/releases/latest/download/appcast.xml";
 
 	/// <summary>
 	/// Khởi tạo UpdateManager và cấu hình NetSparkle
