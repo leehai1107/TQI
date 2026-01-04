@@ -74,6 +74,7 @@ jobs:
       - name: Create GitHub Release and upload assets
         uses: softprops/action-gh-release@v1
         with:
+          overwrite: true
           files: |
             out/TQI.NBTeam-${{ github.ref_name }}-win-x64.zip
             out/appcast.xml
