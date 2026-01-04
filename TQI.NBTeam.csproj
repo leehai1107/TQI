@@ -97,4 +97,17 @@
     <Copy SourceFiles="@(CriticalDlls)" DestinationFolder="$(OutputPath)" SkipUnchangedFiles="false" OverwriteReadOnlyFiles="true" />
     <Copy SourceFiles="@(SeleniumManagerFiles)" DestinationFolder="$(OutputPath)selenium-manager\%(RecursiveDir)" SkipUnchangedFiles="false" />
   </Target>
+  
+  <!-- Force overwrite NuGet versions with lib versions after publish -->
+  <Target Name="OverwritePublishDlls" AfterTargets="Publish">
+    <ItemGroup>
+      <LibDllsToOverwrite Include="lib\System.Memory.dll" />
+      <LibDllsToOverwrite Include="lib\System.Buffers.dll" />
+      <LibDllsToOverwrite Include="lib\System.Runtime.CompilerServices.Unsafe.dll" />
+      <LibDllsToOverwrite Include="lib\System.Numerics.Vectors.dll" />
+      <LibDllsToOverwrite Include="lib\System.Text.Json.dll" />
+      <LibDllsToOverwrite Include="lib\System.Text.Encodings.Web.dll" />
+    </ItemGroup>
+    <Copy SourceFiles="@(LibDllsToOverwrite)" DestinationFolder="$(PublishDir)" SkipUnchangedFiles="false" OverwriteReadOnlyFiles="true" />
+  </Target>
 </Project>
