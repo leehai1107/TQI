@@ -579,7 +579,11 @@ public class frmMain : Form
 
     private ToolStripMenuItem checkPTTTToolStripMenuItem;
 
-    private ToolStripMenuItem tạoQuyTắcToolStripMenuItem;
+    private ToolStripMenuItem createRuleToolStripMenuItem;
+
+    private ToolStripMenuItem deleteCreditCardToolStripMenuItem;
+
+    private ToolStripMenuItem deleteCampToolStripMenuItem;
 
     public frmMain()
     {
@@ -1566,7 +1570,7 @@ public class frmMain : Form
                             row.Cells[12].Value = businessManages.BusinessInfo.CountOwnerAdAccount;
                             row.Cells[13].Value = businessUserId;
                         });
-                        Task.Run(async delegate
+                        await Task.Run(async delegate
                         {
                             DataGridViewCell dataGridViewCell = row.Cells[8];
                             dataGridViewCell.Value = await facebookHandler.CheckLimitBusiness(businessManages.BusinessInfo.BusinessId);
@@ -6500,8 +6504,7 @@ public class frmMain : Form
                 }
                 catch (Exception ex)
                 {
-                    Exception ex2 = ex;
-                    row.Cells["cProcessTKQC"].Value = ex2.Message;
+                    row.Cells["cProcessTKQC"].Value = ex.Message;
                 }
                 finally
                 {
@@ -6798,8 +6801,7 @@ public class frmMain : Form
                 }
                 catch (Exception ex)
                 {
-                    Exception ex2 = ex;
-                    UpdateGridCellAsync(row, "cProcessTKQC", ex2.Message, 1);
+                    UpdateGridCellAsync(row, "cProcessTKQC", ex.Message, 1);
                 }
                 finally
                 {
@@ -6888,8 +6890,7 @@ public class frmMain : Form
                 }
                 catch (Exception ex)
                 {
-                    Exception ex2 = ex;
-                    UpdateGridCellAsync(row, "cProcessTKQC", ex2.Message, 1);
+                    UpdateGridCellAsync(row, "cProcessTKQC", ex.Message, 1);
                 }
                 finally
                 {
@@ -7007,8 +7008,7 @@ public class frmMain : Form
                 }
                 catch (Exception ex)
                 {
-                    Exception ex2 = ex;
-                    UpdateGridCellAsync(row, "cProcessTKQC", ex2.Message, 1);
+                    UpdateGridCellAsync(row, "cProcessTKQC", ex.Message, 1);
                 }
                 finally
                 {
@@ -7075,8 +7075,7 @@ public class frmMain : Form
                 }
                 catch (Exception ex)
                 {
-                    Exception ex2 = ex;
-                    UpdateGridCellAsync(row, "cProcessTKQC", ex2.Message, 1);
+                    UpdateGridCellAsync(row, "cProcessTKQC", ex.Message, 1);
                 }
                 finally
                 {
@@ -7086,7 +7085,156 @@ public class frmMain : Form
         }
     }
 
-    private async void tạoQuyTắcToolStripMenuItem_Click(object sender, EventArgs e)
+
+    private async void deleteCreditCardToolStripMenuItem_Click(object sender, EventArgs e)
+    {
+        List<DataGridViewRow> selectedRows = (from DataGridViewRow dataGridViewRow in dtgvTKQC.Rows
+                                              where dataGridViewRow.Selected || dataGridViewRow.Cells.Cast<DataGridViewCell>().Any((DataGridViewCell cell) => cell.Selected)
+                                              select dataGridViewRow).ToList();
+        if (selectedRows.Count == 0)
+        {
+            MessageBox.Show("Vui lòng chọn tài khoản để thực hiện chức năng này!");
+            return;
+        }
+        int maxThread = (int)nudCountThreads.Value;
+        _ = cbbTypeLogin.SelectedIndex;
+        int typeProxy = cbbTypeProxy.SelectedIndex;
+        SemaphoreSlim semaphore = new SemaphoreSlim(maxThread, maxThread);
+        List<Task> _loginTasks = new List<Task>();
+        string proxy = string.Empty;
+        if (typeProxy == 1)
+        {
+            proxy = tbProxy.Text;
+        }
+        foreach (DataGridViewRow row in selectedRows)
+        {
+            await semaphore.WaitAsync();
+            _loginTasks.Add(Task.Run(async delegate
+            {
+                try
+                {
+                    UpdateGridCellAsync(row, "cProcessTKQC", "Processing...", 0);
+                    string uid = row.Cells[2].Value?.ToString();
+                    if (string.IsNullOrEmpty(uid))
+                    {
+                        UpdateGridCellAsync(row, "cProcessTKQC", "Không tìm thấy account với Uid: " + uid, 1);
+                    }
+                    else
+                    {
+                        int rowViaIndex = FindRowIndexByUid(dtgvVia, uid);
+                        DataGridViewRow rowVia = dtgvVia.Rows[rowViaIndex];
+                        AccountDto accountDto = GetAccountDtoByRow(rowVia);
+                        FacebookHandlerDto exist = FacebookHandlerContainer.Instance.FacebookHandlerProfile.Find((FacebookHandlerDto x) => x.Account.Uid == uid);
+                        if (exist == null || exist.FacebookHandler == null)
+                        {
+                            await ProcessLoginFacebook(accountDto, rowVia, proxy, 0);
+                            exist = FacebookHandlerContainer.Instance.FacebookHandlerProfile.Find((FacebookHandlerDto x) => x.Account.Uid == accountDto.Uid);
+                            if (exist?.FacebookHandler == null)
+                            {
+                                UpdateGridCellAsync(rowVia, "cProcess", "Login Via thất bại", 1);
+                                return;
+                            }
+                        }
+                        string adAccountId = row.Cells[1].Value?.ToString();
+                        if (string.IsNullOrEmpty(adAccountId))
+                        {
+                            UpdateGridCellAsync(row, "cProcessTKQC", "ID tài khoản quảng cáo trống", 1);
+                        }
+                        else
+                        {
+                            FacebookHandler facebookHandler = exist.FacebookHandler;
+                            bool isRemoved = await facebookHandler.RemoveCreditCard(adAccountId, null);
+                            UpdateGridCellAsync(row, "cProcessTKQC", isRemoved ? "Xóa thẻ thành công" : "Xóa thẻ thất bại", isRemoved ? 0 : 1);
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    UpdateGridCellAsync(row, "cProcessTKQC", ex.Message, 1);
+                }
+                finally
+                {
+                    semaphore.Release();
+                }
+            }));
+        }
+    }
+
+    private async void deleteCampToolStripMenuItem_Click(object sender, EventArgs e)
+    {
+        List<DataGridViewRow> selectedRows = (from DataGridViewRow dataGridViewRow in dtgvTKQC.Rows
+                                              where dataGridViewRow.Selected || dataGridViewRow.Cells.Cast<DataGridViewCell>().Any((DataGridViewCell cell) => cell.Selected)
+                                              select dataGridViewRow).ToList();
+        if (selectedRows.Count == 0)
+        {
+            MessageBox.Show("Vui lòng chọn tài khoản để thực hiện chức năng này!");
+            return;
+        }
+        int maxThread = (int)nudCountThreads.Value;
+        _ = cbbTypeLogin.SelectedIndex;
+        int typeProxy = cbbTypeProxy.SelectedIndex;
+        SemaphoreSlim semaphore = new SemaphoreSlim(maxThread, maxThread);
+        List<Task> _loginTasks = new List<Task>();
+        string proxy = string.Empty;
+        if (typeProxy == 1)
+        {
+            proxy = tbProxy.Text;
+        }
+        foreach (DataGridViewRow row in selectedRows)
+        {
+            await semaphore.WaitAsync();
+            _loginTasks.Add(Task.Run(async delegate
+            {
+                try
+                {
+                    UpdateGridCellAsync(row, "cProcessTKQC", "Processing...", 0);
+                    string uid = row.Cells[2].Value?.ToString();
+                    if (string.IsNullOrEmpty(uid))
+                    {
+                        UpdateGridCellAsync(row, "cProcessTKQC", "Không tìm thấy account với Uid: " + uid, 1);
+                    }
+                    else
+                    {
+                        int rowViaIndex = FindRowIndexByUid(dtgvVia, uid);
+                        DataGridViewRow rowVia = dtgvVia.Rows[rowViaIndex];
+                        AccountDto accountDto = GetAccountDtoByRow(rowVia);
+                        FacebookHandlerDto exist = FacebookHandlerContainer.Instance.FacebookHandlerProfile.Find((FacebookHandlerDto x) => x.Account.Uid == uid);
+                        if (exist == null || exist.FacebookHandler == null)
+                        {
+                            await ProcessLoginFacebook(accountDto, rowVia, proxy, 0);
+                            exist = FacebookHandlerContainer.Instance.FacebookHandlerProfile.Find((FacebookHandlerDto x) => x.Account.Uid == accountDto.Uid);
+                            if (exist?.FacebookHandler == null)
+                            {
+                                UpdateGridCellAsync(rowVia, "cProcess", "Login Via thất bại", 1);
+                                return;
+                            }
+                        }
+                        string adAccountId = row.Cells[1].Value?.ToString();
+                        if (string.IsNullOrEmpty(adAccountId))
+                        {
+                            UpdateGridCellAsync(row, "cProcessTKQC", "ID tài khoản quảng cáo trống", 1);
+                        }
+                        else
+                        {
+                            FacebookHandler facebookHandler = exist.FacebookHandler;
+                            bool archived = await facebookHandler.ArchiveAllCampaigns(adAccountId);
+                            UpdateGridCellAsync(row, "cProcessTKQC", archived ? "Xóa camp thành công" : "Xóa camp thất bại", archived ? 0 : 1);
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    UpdateGridCellAsync(row, "cProcessTKQC", ex.Message, 1);
+                }
+                finally
+                {
+                    semaphore.Release();
+                }
+            }));
+        }
+    }
+
+    private async void createRuleToolStripMenuItem_Click(object sender, EventArgs e)
     {
         List<DataGridViewRow> selectedRows = (from DataGridViewRow dataGridViewRow in dtgvTKQC.Rows
                                               where dataGridViewRow.Selected || dataGridViewRow.Cells.Cast<DataGridViewCell>().Any((DataGridViewCell cell) => cell.Selected)
@@ -7149,8 +7297,7 @@ public class frmMain : Form
                 }
                 catch (Exception ex)
                 {
-                    Exception ex2 = ex;
-                    UpdateGridCellAsync(row, "cProcessTKQC", ex2.Message, 1);
+                    UpdateGridCellAsync(row, "cProcessTKQC", ex.Message, 1);
                 }
                 finally
                 {
@@ -7380,7 +7527,9 @@ public class frmMain : Form
         this.tsmPasteBusinessId = new System.Windows.Forms.ToolStripMenuItem();
         this.toolStripMenuItem2 = new System.Windows.Forms.ToolStripMenuItem();
         this.checkPTTTToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-        this.tạoQuyTắcToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+        this.createRuleToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+        this.deleteCreditCardToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+        this.deleteCampToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
         this.thoátTKQCToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
         this.thêmVàoDòng2BMToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
         this.xóaQTVToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
@@ -8708,10 +8857,11 @@ public class frmMain : Form
         this.cProcessTKQC.HeaderText = "Process";
         this.cProcessTKQC.Name = "cProcessTKQC";
         this.ctmnsTKQC.ImageScalingSize = new System.Drawing.Size(20, 20);
-        this.ctmnsTKQC.Items.AddRange(new System.Windows.Forms.ToolStripItem[19]
+        this.ctmnsTKQC.Items.AddRange(new System.Windows.Forms.ToolStripItem[21]
         {
-            this.toolStripMenuItem1, this.tsmPasteBusinessId, this.toolStripMenuItem2, this.checkPTTTToolStripMenuItem, this.tạoQuyTắcToolStripMenuItem, this.thoátTKQCToolStripMenuItem, this.thêmVàoDòng2BMToolStripMenuItem, this.xóaQTVToolStripMenuItem, this.xóaQTVIGToolStripMenuItem, this.thoátTKQCToolStripMenuItem1,
-            this.đóngTKQCToolStripMenuItem, this.mởTKQCToolStripMenuItem, this.gánQuyềnAddThẻToolStripMenuItem, this.mởChromePEToolStripMenuItem, this.checkCampaignToolStripMenuItem, this.checkBillToolStripMenuItem, this.payToolStripMenuItem, this.cHECKTKQCDIEToolStripMenuItem, this.nhétTKQCToolStripMenuItem
+            this.toolStripMenuItem1, this.tsmPasteBusinessId, this.toolStripMenuItem2, this.checkPTTTToolStripMenuItem, this.createRuleToolStripMenuItem, this.thoátTKQCToolStripMenuItem, this.thêmVàoDòng2BMToolStripMenuItem, this.xóaQTVToolStripMenuItem, this.xóaQTVIGToolStripMenuItem, this.thoátTKQCToolStripMenuItem1,
+            this.đóngTKQCToolStripMenuItem, this.mởTKQCToolStripMenuItem, this.gánQuyềnAddThẻToolStripMenuItem, this.mởChromePEToolStripMenuItem, this.checkCampaignToolStripMenuItem, this.checkBillToolStripMenuItem, this.payToolStripMenuItem, this.cHECKTKQCDIEToolStripMenuItem, this.nhétTKQCToolStripMenuItem, this.deleteCreditCardToolStripMenuItem,
+            this.deleteCampToolStripMenuItem
         });
         this.ctmnsTKQC.Name = "ctmnsBM";
         this.ctmnsTKQC.Size = new System.Drawing.Size(189, 422);
@@ -8731,10 +8881,18 @@ public class frmMain : Form
         this.checkPTTTToolStripMenuItem.Size = new System.Drawing.Size(188, 22);
         this.checkPTTTToolStripMenuItem.Text = "Check PTTT";
         this.checkPTTTToolStripMenuItem.Click += new System.EventHandler(checkPTTTToolStripMenuItem_Click);
-        this.tạoQuyTắcToolStripMenuItem.Name = "tạoQuyTắcToolStripMenuItem";
-        this.tạoQuyTắcToolStripMenuItem.Size = new System.Drawing.Size(188, 22);
-        this.tạoQuyTắcToolStripMenuItem.Text = "Tạo quy tắc";
-        this.tạoQuyTắcToolStripMenuItem.Click += new System.EventHandler(tạoQuyTắcToolStripMenuItem_Click);
+        this.createRuleToolStripMenuItem.Name = "createRuleToolStripMenuItem";
+        this.createRuleToolStripMenuItem.Size = new System.Drawing.Size(188, 22);
+        this.createRuleToolStripMenuItem.Text = "Tạo quy tắc";
+        this.createRuleToolStripMenuItem.Click += new System.EventHandler(createRuleToolStripMenuItem_Click);
+        this.deleteCreditCardToolStripMenuItem.Name = "deleteCreditCardToolStripMenuItem";
+        this.deleteCreditCardToolStripMenuItem.Size = new System.Drawing.Size(188, 22);
+        this.deleteCreditCardToolStripMenuItem.Text = "Xóa thẻ";
+        this.deleteCreditCardToolStripMenuItem.Click += new System.EventHandler(deleteCreditCardToolStripMenuItem_Click);
+        this.deleteCampToolStripMenuItem.Name = "deleteCampToolStripMenuItem";
+        this.deleteCampToolStripMenuItem.Size = new System.Drawing.Size(188, 22);
+        this.deleteCampToolStripMenuItem.Text = "Xóa Camp";
+        this.deleteCampToolStripMenuItem.Click += new System.EventHandler(deleteCampToolStripMenuItem_Click);
         this.thoátTKQCToolStripMenuItem.Name = "thoátTKQCToolStripMenuItem";
         this.thoátTKQCToolStripMenuItem.Size = new System.Drawing.Size(188, 22);
         this.thoátTKQCToolStripMenuItem.Text = "Xóa TKQC Khỏi BM";
