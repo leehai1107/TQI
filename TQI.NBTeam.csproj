@@ -68,6 +68,7 @@
 
   <ItemGroup>
     <PackageReference Include="System.Resources.Extensions" Version="8.0.0" />
+    <PackageReference Include="NetSparkleUpdater.SparkleUpdater" Version="2.3.0" />
   </ItemGroup>
 
   <!-- Copy entire lib folder to output under a lib folder -->

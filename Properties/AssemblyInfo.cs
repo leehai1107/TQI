@@ -5,9 +5,9 @@ using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
 
 [assembly: AssemblyTitle("TQI.NBTeam")]
-[assembly: AssemblyDescription("")]
+[assembly: AssemblyDescription("TQI NBTeam Application")]
 [assembly: AssemblyConfiguration("")]
-[assembly: AssemblyCompany("")]
+[assembly: AssemblyCompany("TQI")]
 [assembly: AssemblyProduct("TQI.NBTeam")]
 [assembly: AssemblyCopyright("Copyright ©  2025")]
 [assembly: AssemblyTrademark("")]
