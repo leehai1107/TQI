@@ -107,6 +107,10 @@ public class frmMain : Form
 
     private ToolStripLabel lblCountSelected;
 
+    private ToolStripButton btnCheckUpdates;
+
+    private ToolStripLabel lblUpdateNotification;
+
     private ToolStripMenuItem xóaViaToolStripMenuItem;
 
     private GroupBox groupBox1;
@@ -7363,6 +7367,8 @@ public class frmMain : Form
         this.lblTotalCount = new System.Windows.Forms.ToolStripLabel();
         this.toolStripLabel1 = new System.Windows.Forms.ToolStripLabel();
         this.lblCountSelected = new System.Windows.Forms.ToolStripLabel();
+        this.btnCheckUpdates = new System.Windows.Forms.ToolStripButton();
+        this.lblUpdateNotification = new System.Windows.Forms.ToolStripLabel();
         this.tabPage2 = new System.Windows.Forms.TabPage();
         this.groupBox2 = new System.Windows.Forms.GroupBox();
         this.tabControl3 = new System.Windows.Forms.TabControl();
@@ -7901,7 +7907,7 @@ public class frmMain : Form
         this.cbbTypeLogin.TabIndex = 0;
         this.tsVia.Dock = System.Windows.Forms.DockStyle.Bottom;
         this.tsVia.ImageScalingSize = new System.Drawing.Size(20, 20);
-        this.tsVia.Items.AddRange(new System.Windows.Forms.ToolStripItem[5] { this.lblStatus, this.lblTextTotalCount, this.lblTotalCount, this.toolStripLabel1, this.lblCountSelected });
+        this.tsVia.Items.AddRange(new System.Windows.Forms.ToolStripItem[7] { this.lblStatus, this.lblTextTotalCount, this.lblTotalCount, this.toolStripLabel1, this.lblCountSelected, this.btnCheckUpdates, this.lblUpdateNotification });
         this.tsVia.Location = new System.Drawing.Point(3, 508);
         this.tsVia.Name = "tsVia";
         this.tsVia.Size = new System.Drawing.Size(1505, 25);
@@ -7930,6 +7936,18 @@ public class frmMain : Form
         this.lblCountSelected.Name = "lblCountSelected";
         this.lblCountSelected.Size = new System.Drawing.Size(15, 22);
         this.lblCountSelected.Text = "0";
+        this.btnCheckUpdates.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Text;
+        this.btnCheckUpdates.Font = new System.Drawing.Font("Tahoma", 9f, System.Drawing.FontStyle.Bold);
+        this.btnCheckUpdates.ForeColor = System.Drawing.Color.Navy;
+        this.btnCheckUpdates.Name = "btnCheckUpdates";
+        this.btnCheckUpdates.Size = new System.Drawing.Size(94, 22);
+        this.btnCheckUpdates.Text = "Check Updates";
+        this.btnCheckUpdates.Click += new System.EventHandler(this.BtnCheckUpdates_Click);
+        this.lblUpdateNotification.Font = new System.Drawing.Font("Tahoma", 9f, System.Drawing.FontStyle.Bold);
+        this.lblUpdateNotification.ForeColor = System.Drawing.Color.Red;
+        this.lblUpdateNotification.Name = "lblUpdateNotification";
+        this.lblUpdateNotification.Size = new System.Drawing.Size(0, 22);
+        this.lblUpdateNotification.Text = "";
         this.tabPage2.Controls.Add(this.groupBox2);
         this.tabPage2.Controls.Add(this.tsBM);
         this.tabPage2.Controls.Add(this.dtgvBM);
@@ -9303,4 +9321,39 @@ public class frmMain : Form
         this.ctmsIG.ResumeLayout(false);
         base.ResumeLayout(false);
     }
-}
+
+    private void BtnCheckUpdates_Click(object sender, EventArgs e)
+    {
+        Task.Run(() => Program.UpdateManager.CheckForUpdatesManualAsync());
+    }
+
+    protected override void OnLoad(EventArgs e)
+    {
+        base.OnLoad(e);
+        Task.Run(() => CheckForUpdatesOnStartup());
+    }
+
+    private async void CheckForUpdatesOnStartup()
+    {
+        try
+        {
+            var updateAvailable = await Program.UpdateManager.CheckForUpdatesAsync();
+            if (updateAvailable)
+            {
+                if (InvokeRequired)
+                {
+                    BeginInvoke((MethodInvoker)delegate
+                    {
+                        lblUpdateNotification.Text = "⚠ UPDATE AVAILABLE";
+                        lblUpdateNotification.ForeColor = Color.Red;
+                    });
+                }
+                else
+                {
+                    lblUpdateNotification.Text = "⚠ UPDATE AVAILABLE";
+                    lblUpdateNotification.ForeColor = Color.Red;
+                }
+            }
+        }
+        catch { }
+    }}

@@ -7,6 +7,8 @@ namespace TQI.NBTeam;
 internal static class Program
 {
 	private static UpdateManager _updateManager;
+	
+	public static UpdateManager UpdateManager => _updateManager;
 
 	[STAThread]
 	private static void Main()

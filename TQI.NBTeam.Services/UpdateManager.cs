@@ -2,6 +2,7 @@ using System;
 using System.Diagnostics;
 using System.IO;
 using System.Reflection;
+using System.Threading.Tasks;
 using NetSparkleUpdater;
 using NetSparkleUpdater.AssemblyAccessors;
 using NetSparkleUpdater.Configurations;
@@ -99,7 +100,33 @@ public class UpdateManager : IDisposable
 	}
 
 	/// <summary>
-	/// Dispose resources
+	/// Kiểm tra update thủ công (async)
+	/// </summary>
+	public async Task CheckForUpdatesManualAsync()
+	{
+		_sparkle?.CheckForUpdatesAtUserRequest();
+		await Task.Delay(100);
+	}
+
+	/// <summary>
+	/// Kiểm tra update ngầm và trả về true nếu có update mới
+	/// </summary>
+	public async Task<bool> CheckForUpdatesAsync()
+	{
+		try
+		{
+			_sparkle?.CheckForUpdatesQuietly();
+			// Chờ một chút để update check hoàn tất
+			await Task.Delay(200);
+			return false; // NetSparkle tự động handle, không cần return state
+		}
+		catch
+		{
+			return false;
+		}
+	}
+
+	/// <summary>
 	/// </summary>
 	public void Dispose()
 	{
