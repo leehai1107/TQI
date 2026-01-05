@@ -1031,72 +1031,184 @@ public class FacebookHandler
         return false;
     }
 
-    public async Task<(List<AdAccountDto>, string)> LoadAdAccountV2(string businessId, int typeLoad, string nextUrl = "")
+    public async Task<(List<AdAccountDto> Accounts, string NextUrl)> LoadAdAccountV2(
+    string businessId,
+    int typeLoad,
+    string nextUrl = ""
+)
     {
-        AccountDto account = _account;
-        AccountDto account2 = _account;
-        (string, string) tuple = await GetTokenAsync();
-        account.DTSGToken = tuple.Item1;
-        account2.Token = tuple.Item2;
-        ConcurrentBag<AdAccountDto> adAccountDtos = new ConcurrentBag<AdAccountDto>();
-        if (typeLoad == 0)
+        var accounts = new List<AdAccountDto>();
+
+        // ===== Get token =====
+        var token = await GetTokenAsync();
+        string accessToken = token.Item2;
+
+        // ===== Build first URL =====
+        if (string.IsNullOrEmpty(nextUrl))
         {
-            if (string.IsNullOrEmpty(nextUrl))
-            {
-                nextUrl = "https://graph.facebook.com/v17.0/" + businessId + "/client_ad_accounts?access_token=" + _account.Token + "&__activeScenarioIDs=[]&__activeScenarios=[]&__interactionsMetadata=[]&_reqName=object:business/client_ad_accounts&_reqSrc=BusinessConnectedClientAdAccountsStore.brands&date_format=U&fields=[\"business_country_code\",\"owner\",\"timezone_offset_hours_utc\",\"business\",\"agencies\",\"userpermissions\",\"spend_cap\",\"created_time\",\"funding_source_details\",\"campaigns{boosted_object_id}\",\"account_status\",\"adspaymentcycle\",\"id\",\"currency\",\"amount_spent\",\"balance\",\"name\",\"timezone_name\",\"adtrust_dsl\",\"disable_reason\",\"min_billing_threshold\"]&limit=50&locale=en_GB&method=get&pretty=0&sort=name_ascending&suppress_http_code=1&xref=fc43554762568c76b";
-            }
+            nextUrl = BuildAdAccountUrl(businessId, typeLoad, accessToken);
         }
-        else if (string.IsNullOrEmpty(nextUrl))
-        {
-            nextUrl = "https://graph.facebook.com/v17.0/" + businessId + "/owned_ad_accounts?access_token=" + _account.Token + "&__activeScenarioIDs=[]&__activeScenarios=[]&__interactionsMetadata=[]&_reqName=object:business/owned_ad_accounts&_reqSrc=BusinessConnectedOwnedAdAccountsStore.brands&date_format=U&fields=[\"business_country_code\",\"owner\",\"timezone_offset_hours_utc\",\"business\",\"agencies\",\"userpermissions\",\"spend_cap\",\"created_time\",\"funding_source_details\",\"campaigns{boosted_object_id}\",\"account_status\",\"adspaymentcycle\",\"id\",\"currency\",\"amount_spent\",\"balance\",\"name\",\"timezone_name\",\"adtrust_dsl\",\"disable_reason\",\"min_billing_threshold\"]&limit=50&locale=en_GB&method=get&pretty=0&sort=name_ascending&suppress_http_code=1&xref=f06badf73fa916dd1&_callFlowletID=0&_triggerFlowletID=11150";
-        }
+
+        if (string.IsNullOrEmpty(nextUrl))
+            return (accounts, string.Empty);
+
         try
         {
-            HttpResponseMessage response = await client.GetAsync(nextUrl);
-            MediaTypeHeaderValue contentType = response.Content.Headers.ContentType;
-            if (((contentType != null) ? contentType.CharSet : null)?.Contains("\"utf-8\"") ?? false)
+            using HttpResponseMessage response = await client.GetAsync(nextUrl);
+
+            if (!response.IsSuccessStatusCode)
+                return (accounts, string.Empty);
+
+            string json = await response.Content.ReadAsStringAsync();
+            JObject root = JObject.Parse(json);
+
+            JArray data = root["data"] as JArray;
+            if (data == null || data.Count == 0)
             {
-                response.Content.Headers.ContentType.CharSet = "utf-8";
+                return (accounts, root["paging"]?["next"]?.ToString());
             }
-            JObject adAccountObject = JObject.Parse(await response.Content.ReadAsStringAsync());
-            JArray adAccountJArr = adAccountObject["data"].ToObject<JArray>();
-            foreach (JObject adAccountJArrObject in adAccountJArr.Cast<JObject>())
+
+            foreach (JObject item in data)
             {
-                string users = string.Join("|", (from x in adAccountJArrObject["userpermissions"]?["data"]?.Where((JToken x) => x["user"]?["id"] != null)
-                                                 select x["user"]["id"].ToString()) ?? Enumerable.Empty<string>());
-                string partnerIds = string.Join("|", (from x in adAccountJArrObject["agencies"]?["data"]?.Where((JToken x) => x["id"] != null)
-                                                      select x["id"].ToString()) ?? Enumerable.Empty<string>());
-                AdAccountDto adAccountDto = new AdAccountDto
-                {
-                    AccountId = adAccountJArrObject["id"].ToString().Replace("act_", ""),
-                    AccountName = adAccountJArrObject["name"].ToString(),
-                    Currency = adAccountJArrObject["currency"].ToString(),
-                    SpendCap = (double.Parse(adAccountJArrObject["spend_cap"]?.ToString()) / 100.0).ToString(),
-                    AccountLimit = ((adAccountJArrObject["adtrust_dsl"].ToString() == "-1") ? "Nolimit" : adAccountJArrObject["adtrust_dsl"].ToString()),
-                    AccountThreshold = adAccountJArrObject["min_billing_threshold"]?["amount"]?.ToString(),
-                    AccountBalance = adAccountJArrObject["balance"]?.ToString(),
-                    AccountSpent = adAccountJArrObject["amount_spent"]?.ToString(),
-                    PaymentMethod = (string.IsNullOrEmpty(adAccountJArrObject["funding_source_details"]?["display_string"]?.ToString()) ? "N/A" : adAccountJArrObject["funding_source_details"]?["display_string"]?.ToString()),
-                    TimeZone = adAccountJArrObject["timezone_name"].ToString() + "/" + adAccountJArrObject["timezone_offset_hours_utc"],
-                    CampaignCount = (string.IsNullOrEmpty(adAccountJArrObject["campaigns"]?["data"]?.ToString()) ? "0" : adAccountJArrObject["campaigns"]?["data"]?.ToArray().Count().ToString()),
-                    TypeAdAccount = (string.IsNullOrEmpty(adAccountJArrObject["business"]?.ToString()) ? "Cá nhân" : "Business"),
-                    CreatedTime = (Common.IsDateTimeOffset(adAccountJArrObject["created_time"].ToString()) ? Convert.ToDateTime(adAccountJArrObject["created_time"].ToString()).ToString("dd/MM/yyyy") : DateTimeOffset.FromUnixTimeSeconds(long.Parse(adAccountJArrObject["created_time"].ToString())).DateTime.ToString("dd/MM/yyyy")),
-                    Owner = adAccountJArrObject["owner"]?.ToString(),
-                    BusinessCountryCode = adAccountJArrObject["business_country_code"]?.ToString(),
-                    AdAccountStatus = ((adAccountJArrObject["account_status"]?.ToString() == "1") ? "Live" : ((adAccountJArrObject["account_status"]?.ToString() == "2") ? "Vô hiệu hóa" : ((adAccountJArrObject["account_status"]?.ToString() == "3") ? "Cần thanh toán" : ((adAccountJArrObject["account_status"]?.ToString() == "101") ? "Đóng" : ((adAccountJArrObject["account_status"]?.ToString() == "7") ? "PENDING_RISK_REVIEW" : ((adAccountJArrObject["account_status"]?.ToString() == "8") ? "PENDING_SETTLEMENT" : ((adAccountJArrObject["account_status"]?.ToString() == "9") ? "IN_GRACE_PERIOD" : ((adAccountJArrObject["account_status"]?.ToString() == "100") ? "PENDING_CLOSURE" : ((adAccountJArrObject["account_status"]?.ToString() == "201") ? "ANY_ACTIVE" : ((adAccountJArrObject["account_status"]?.ToString() == "202") ? "ANY_CLOSED" : "")))))))))),
-                    Users = users,
-                    Partners = partnerIds,
-                    BusinessId = adAccountJArrObject["business"]?["id"]?.ToString()
-                };
-                adAccountDtos.Add(adAccountDto);
+                accounts.Add(MapToAdAccountDto(item));
             }
-            nextUrl = adAccountObject["paging"]?["next"]?.ToString();
+
+            nextUrl = root["paging"]?["next"]?.ToString();
         }
-        catch
+        catch (Exception)
         {
             nextUrl = string.Empty;
         }
-        return (adAccountDtos.ToList(), nextUrl);
+
+        return (accounts, nextUrl);
+    }
+    private static string BuildAdAccountUrl(
+        string businessId,
+        int typeLoad,
+        string accessToken
+    )
+    {
+        string endpoint = typeLoad == 0
+            ? "client_ad_accounts"
+            : "owned_ad_accounts";
+
+        return $"https://graph.facebook.com/v17.0/{businessId}/{endpoint}" +
+               $"?access_token={accessToken}" +
+               "&limit=50&locale=en_GB" +
+               "&fields=" +
+               "[\"business_country_code\",\"owner\",\"timezone_offset_hours_utc\",\"business\"," +
+               "\"agencies\",\"userpermissions\",\"spend_cap\",\"created_time\"," +
+               "\"funding_source_details\",\"campaigns{boosted_object_id}\"," +
+               "\"account_status\",\"adspaymentcycle\",\"id\",\"currency\"," +
+               "\"amount_spent\",\"balance\",\"name\",\"timezone_name\"," +
+               "\"adtrust_dsl\",\"disable_reason\",\"min_billing_threshold\"]";
+    }
+    private static AdAccountDto MapToAdAccountDto(JObject item)
+    {
+        return new AdAccountDto
+        {
+            AccountId = item.Value<string>("id")?.Replace("act_", ""),
+            AccountName = item.Value<string>("name"),
+            Currency = item.Value<string>("currency"),
+
+            SpendCap = ParseMoney(item["spend_cap"]),
+            AccountLimit = ParseAccountLimit(item["adtrust_dsl"]),
+            AccountThreshold = item["min_billing_threshold"]?["amount"]?.ToString(),
+
+            AccountBalance = item.Value<string>("balance"),
+            AccountSpent = item.Value<string>("amount_spent"),
+
+            PaymentMethod = item["funding_source_details"]?["display_string"]?.ToString() ?? "N/A",
+
+            TimeZone = $"{item.Value<string>("timezone_name")}/{item.Value<string>("timezone_offset_hours_utc")}",
+
+            CampaignCount = item["campaigns"]?["data"] is JArray c ? c.Count.ToString() : "0",
+
+            TypeAdAccount = item["business"] == null ? "Cá nhân" : "Business",
+
+            CreatedTime = ParseCreatedTime(item["created_time"]),
+
+            Owner = item["owner"]?.ToString(),
+            BusinessCountryCode = item.Value<string>("business_country_code"),
+
+            AdAccountStatus = MapAccountStatus(item.Value<string>("account_status")),
+
+            Users = ParseUsers(item),
+            Partners = ParsePartners(item),
+
+            BusinessId = item["business"]?["id"]?.ToString()
+        };
+    }
+    private static string ParseMoney(JToken token)
+    {
+        if (token == null)
+            return "0";
+
+        if (!double.TryParse(token.ToString(), out double value))
+            return "0";
+
+        return (value / 100).ToString();
+    }
+    private static string ParseAccountLimit(JToken token)
+    {
+        if (token == null)
+            return "N/A";
+
+        return token.ToString() == "-1"
+            ? "Nolimit"
+            : token.ToString();
+    }
+    private static string ParseCreatedTime(JToken token)
+    {
+        if (token == null)
+            return string.Empty;
+
+        string value = token.ToString();
+
+        if (DateTimeOffset.TryParse(value, out var dt))
+            return dt.ToString("dd/MM/yyyy");
+
+        if (long.TryParse(value, out long unix))
+            return DateTimeOffset
+                .FromUnixTimeSeconds(unix)
+                .ToString("dd/MM/yyyy");
+
+        return string.Empty;
+    }
+    private static string MapAccountStatus(string status)
+    {
+        return status switch
+        {
+            "1" => "Live",
+            "2" => "Vô hiệu hóa",
+            "3" => "Cần thanh toán",
+            "7" => "PENDING_RISK_REVIEW",
+            "8" => "PENDING_SETTLEMENT",
+            "9" => "IN_GRACE_PERIOD",
+            "100" => "PENDING_CLOSURE",
+            "101" => "Đóng",
+            _ => "Unknown"
+        };
+    }
+    private static string ParseUsers(JObject item)
+    {
+        var users = item["userpermissions"]?["data"]?
+            .Where(x => x["user"]?["id"] != null)
+            .Select(x => x["user"]["id"].ToString());
+
+        return users == null
+            ? string.Empty
+            : string.Join("|", users);
+    }
+    private static string ParsePartners(JObject item)
+    {
+        var partners = item["agencies"]?["data"]?
+            .Where(x => x["id"] != null)
+            .Select(x => x["id"].ToString());
+
+        return partners == null
+            ? string.Empty
+            : string.Join("|", partners);
     }
 
     public async Task<(List<AdAccountDto>, string)> LoadAdAccountV2(string businessId, int typeLoad, int filter, string nextUrl = "")
@@ -1528,10 +1640,8 @@ public class FacebookHandler
                     continue;
                 }
                 JObject bodyObject = JObject.Parse(adAccountJArrObject["body"].ToString());
-                string users = string.Join(Environment.NewLine, (from x in bodyObject["userpermissions"]?["data"]?.Where((JToken x) => x["user"]?["id"] != null)
-                                                                 select x["user"]["id"].ToString()) ?? Enumerable.Empty<string>());
-                string partnerIds = string.Join(Environment.NewLine, (from x in bodyObject["agencies"]?["data"]?.Where((JToken x) => x["id"] != null)
-                                                                      select x["id"].ToString()) ?? Enumerable.Empty<string>());
+                string users = string.Join(Environment.NewLine, bodyObject["userpermissions"]?["data"]?.Where((JToken x) => x["user"]?["id"] != null).Select(x => x["user"]["id"].ToString()) ?? Enumerable.Empty<string>());
+                string partnerIds = string.Join(Environment.NewLine, bodyObject["agencies"]?["data"]?.Where((JToken x) => x["id"] != null).Select(x => x["id"].ToString()) ?? Enumerable.Empty<string>());
                 AdAccountDto adAccountDto = new AdAccountDto
                 {
                     AccountId = bodyObject["id"].ToString().Replace("act_", ""),
@@ -1555,8 +1665,7 @@ public class FacebookHandler
                 };
                 if (adAccountDto.TypeAdAccount == "Business")
                 {
-                    string users2 = string.Join(Environment.NewLine, (from x in bodyObject["users"]?["data"]?.Where((JToken x) => x["id"] != null)
-                                                                      select x["id"].ToString()) ?? Enumerable.Empty<string>());
+                    string users2 = string.Join(Environment.NewLine, bodyObject["users"]?["data"]?.Where((JToken x) => x["id"] != null).Select(x => x["id"].ToString()) ?? Enumerable.Empty<string>());
                     adAccountDto.Users = users2;
                 }
                 adAccountDtos.Add(adAccountDto);
