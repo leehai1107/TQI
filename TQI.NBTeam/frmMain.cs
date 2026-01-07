@@ -612,6 +612,15 @@ public class frmMain : Form
         dtgvBM.RowTemplate.Height = 35;
         dtgvTKQC.AutoSizeRowsMode = DataGridViewAutoSizeRowsMode.None;
         dtgvTKQC.RowTemplate.Height = 35;
+        
+        // Set DataGridView headers to orange background and bold, make columns read-only
+        StyleDataGridViewHeaders(dtgvVia);
+        StyleDataGridViewHeaders(dtgvBM);
+        StyleDataGridViewHeaders(dtgvTKQC);
+        StyleDataGridViewHeaders(dtgvUser);
+        StyleDataGridViewHeaders(dtgvHotmail);
+        StyleDataGridViewHeaders(dtgvIG);
+        
         LoadTimeZone();
         LoadCurrency();
         LoadTypeMail();
@@ -619,6 +628,20 @@ public class frmMain : Form
         LoadPermitTask();
         LoadTypeMailRead();
         tbNameAdAccount.Text = "TQI-" + DateTime.Now.ToString("dd/MM/yyyy");
+    }
+
+    private void StyleDataGridViewHeaders(DataGridView dataGridView)
+    {
+        // Set header style: orange background and bold
+        dataGridView.ColumnHeadersDefaultCellStyle.BackColor = Color.Orange;
+        dataGridView.ColumnHeadersDefaultCellStyle.Font = new Font(dataGridView.ColumnHeadersDefaultCellStyle.Font ?? new Font("Tahoma", 8.25f), FontStyle.Bold);
+        dataGridView.ColumnHeadersDefaultCellStyle.ForeColor = Color.Black;
+        
+        // Make all columns read-only
+        foreach (DataGridViewColumn column in dataGridView.Columns)
+        {
+            column.ReadOnly = true;
+        }
     }
 
     private void LoadTimeZone()

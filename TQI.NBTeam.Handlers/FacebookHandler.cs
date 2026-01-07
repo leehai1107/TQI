@@ -4175,7 +4175,7 @@ public class FacebookHandler
         };
         response = await client.PostAsync("https://www.facebook.com/api/graphql/", (HttpContent)new FormUrlEncodedContent((IEnumerable<KeyValuePair<string, string>>)taoWA1));
         MediaTypeHeaderValue contentType21 = response.Content.Headers.ContentType;
-        contentType2 = ((contentType21 != null) ? contentType21.CharSet : null);
+        contentType2 = (contentType21 != null) ? contentType21.CharSet : null;
         if (!string.IsNullOrEmpty(contentType2) && contentType2.Contains("\"utf-8\""))
         {
             response.Content.Headers.ContentType.CharSet = "utf-8";
@@ -4207,13 +4207,13 @@ public class FacebookHandler
         string address = "https://graph.facebook.com/graphql?method=post&locale=en_US&pretty=false&format=json&fb_api_req_friendly_name=useCreateWhatsAppBusinessAPIAccountMutation_CreateWhatsAppBusinessAPIAccountMutation&doc_id=29701466519469036&fb_api_caller_class=RelayModern&server_timestamps=true&variables=" + varialables + "&access_token=" + _account.Token;
         response = await client.GetAsync(address);
         MediaTypeHeaderValue contentType22 = response.Content.Headers.ContentType;
-        contentType2 = ((contentType22 != null) ? contentType22.CharSet : null);
+        contentType2 = (contentType22 != null) ? contentType22.CharSet : null;
         if (!string.IsNullOrEmpty(contentType2) && contentType2.Contains("\"utf-8\""))
         {
             response.Content.Headers.ContentType.CharSet = "utf-8";
         }
         JObject obj = JObject.Parse(await response.Content.ReadAsStringAsync());
-        string id = (string?)obj["data"]?["xfb_create_whatsapp_business_api_account"]?["whatsapp_business_account"]?["id"];
+        string id = obj["data"]?["xfb_create_whatsapp_business_api_account"]?["whatsapp_business_account"]?["id"]?.ToString();
         Dictionary<string, string> taoWA3 = new Dictionary<string, string>
         {
             { "av", _account.Uid },
@@ -4246,7 +4246,7 @@ public class FacebookHandler
         };
         response = await client.PostAsync("https://www.facebook.com/api/graphql/", (HttpContent)new FormUrlEncodedContent((IEnumerable<KeyValuePair<string, string>>)taoWA3));
         MediaTypeHeaderValue contentType23 = response.Content.Headers.ContentType;
-        contentType2 = ((contentType23 != null) ? contentType23.CharSet : null);
+        contentType2 = (contentType23 != null) ? contentType23.CharSet : null;
         if (!string.IsNullOrEmpty(contentType2) && contentType2.Contains("\"utf-8\""))
         {
             response.Content.Headers.ContentType.CharSet = "utf-8";
@@ -4674,7 +4674,7 @@ public class FacebookHandler
                     "#PWD_BROWSER:0:1111:" + _account.Password
                 }
             };
-            client.PostAsync(reauthLink, (HttpContent)new FormUrlEncodedContent((IEnumerable<KeyValuePair<string, string>>)payloadReauth));
+            await client.PostAsync(reauthLink, (HttpContent)new FormUrlEncodedContent((IEnumerable<KeyValuePair<string, string>>)payloadReauth));
             HttpResponseMessage response = await client.GetWithRetry(link, _account);
             MediaTypeHeaderValue contentType = response.Content.Headers.ContentType;
             string contentType2 = ((contentType != null) ? contentType.CharSet : null);
